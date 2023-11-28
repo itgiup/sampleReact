@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from "./store/hooks";
 import type { MenuProps, } from 'antd';
 import { AlertOutlined, GlobalOutlined, } from '@ant-design/icons';
 import { ConfigProvider, Layout, Menu, Switch, theme } from 'antd';
 import { createBrowserRouter, RouterProvider, Link, } from "react-router-dom";
-import { useTranslation } from 'react-i18next';
+import i18n from './i18n';
 
 import dayjs from 'dayjs'
 import advancedFormat from 'dayjs/plugin/advancedFormat';
@@ -17,13 +17,15 @@ import weekYear from 'dayjs/plugin/weekYear'
 import { toggleDark } from './store/theme';
 
 import "./App.scss";
-import { saveSettings } from './store/settings';
+import { change, loadSettings, } from './store/settings';
+import { useTranslation } from 'react-i18next';
 dayjs.extend(customParseFormat)
 dayjs.extend(advancedFormat)
 dayjs.extend(weekday)
 dayjs.extend(localeData)
 dayjs.extend(weekOfYear)
 dayjs.extend(weekYear)
+const { log, error, warn } = console
 
 const { Header, Content, Footer, Sider } = Layout;
 const { defaultAlgorithm, darkAlgorithm } = theme;
@@ -49,20 +51,36 @@ const router = createBrowserRouter([
 
 const App: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { t } = useTranslation();
+  const { t } = i18n
   const themeSetting = useAppSelector((state) => state.theme);
   const settings = useAppSelector((state) => state.settings);
-  const [current, setCurrent] = useState('mail');
+  const [current, setCurrent] = useState('signals');
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    // do componentDidMount logic
+    if (!mounted.current) {
+      dispatch(loadSettings()).then(({ payload }) => {
+        if (payload && payload.lang)
+          i18n.changeLanguage(payload.lang)
+      })
+      mounted.current = true;
+
+    } else {
+      // do componentDidUpdate logic
+
+    }
+  });
 
   const changeTheme = (value: boolean) => {
     dispatch(toggleDark());
   };
 
   const onClick: MenuProps['onClick'] = (e) => {
-
     if (e.key.startsWith("settings")) {
       const [key, value] = e.key.split(":")
-      dispatch(saveSettings({ key, value }))
+      dispatch(change({ key: key.replace("settings.", ""), value }))
+      // log(settings)
     } else
       setCurrent(e.key);
 
@@ -84,7 +102,7 @@ const App: React.FC = () => {
     <Layout>
 
       <Header>
-        <div className="demo-logo" />
+        <div className="logo" />
         <Menu onClick={onClick} selectedKeys={[current]} mode="horizontal" items={[
           {
             label: "Signals",
@@ -111,8 +129,8 @@ const App: React.FC = () => {
               <Switch
                 checked={themeSetting.isDark}
                 onChange={changeTheme}
-                checkedChildren="Dark"
-                unCheckedChildren="Light"
+                checkedChildren="☀️"
+                unCheckedChildren="🌙"
               />
             ),
             key: 'alipay',
@@ -121,14 +139,14 @@ const App: React.FC = () => {
       </Header>
 
 
-      <Content style={{ padding: '0 50px' }}>
+      <Content style={{ padding: '10px', color: themeSetting.colorTextBase }}>
         <RouterProvider router={router} />
       </Content>
 
 
-      <Footer style={{ textAlign: 'center' }}>Coin X ©2023 &nbsp;|&nbsp;
-        <a className="menu__link" target="_blank" href="https://coinx.trade/about">@coinx99</a> &nbsp;|&nbsp;
-        <a className="menu__link" target="_blank" href="https://coinx.trade">coinx.trade</a> &nbsp;|&nbsp;
+      <Footer style={{ textAlign: 'center' }}>Coin X ©2023 |&nbsp;
+        <a className="menu__link" target="_blank" href="https://coinx.trade/about">@coinx99</a> |&nbsp;
+        <a className="menu__link" target="_blank" href="https://coinx.trade">coinx.trade</a> |&nbsp;
         All Rights Reserved</Footer>
     </Layout>
   </ConfigProvider>);
