@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { useAppDispatch, useAppSelector } from "@redux/hooks";
-import { LaptopOutlined, NotificationOutlined, UserOutlined } from '@ant-design/icons';
-import type { MenuProps, MenuTheme } from 'antd';
-import { AppstoreOutlined, MailOutlined, SettingOutlined } from '@ant-design/icons';
-import { Breadcrumb, ConfigProvider, Layout, Menu, Switch, theme } from 'antd';
-import * as ReactDOM from "react-dom/client";
+import { useAppDispatch, useAppSelector } from "./store/hooks";
+import type { MenuProps, } from 'antd';
+import { AlertOutlined, GlobalOutlined, } from '@ant-design/icons';
+import { ConfigProvider, Layout, Menu, Switch, theme } from 'antd';
 import { createBrowserRouter, RouterProvider, Link, } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 
 import dayjs from 'dayjs'
 import advancedFormat from 'dayjs/plugin/advancedFormat';
@@ -15,6 +14,10 @@ import weekday from 'dayjs/plugin/weekday'
 import weekOfYear from 'dayjs/plugin/weekOfYear'
 import weekYear from 'dayjs/plugin/weekYear'
 
+import { toggleDark } from './store/theme';
+
+import "./App.scss";
+import { saveSettings } from './store/settings';
 dayjs.extend(customParseFormat)
 dayjs.extend(advancedFormat)
 dayjs.extend(weekday)
@@ -28,31 +31,54 @@ const { defaultAlgorithm, darkAlgorithm } = theme;
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <div>Hello world!</div>,
+    element: <div>Hello world!iIlL</div>,
   },
   {
-    path: "/check",
-    element: <div>check</div>,
+    path: "/login",
+    element: <div>login</div>,
   },
 ]);
 
+
+
+
+
+
+
+
+
 const App: React.FC = () => {
-  const [theme, setTheme] = useState<MenuTheme>('dark');
+  const dispatch = useAppDispatch();
+  const { t } = useTranslation();
   const themeSetting = useAppSelector((state) => state.theme);
+  const settings = useAppSelector((state) => state.settings);
   const [current, setCurrent] = useState('mail');
 
   const changeTheme = (value: boolean) => {
-    setTheme(value ? 'dark' : 'light');
+    dispatch(toggleDark());
   };
 
   const onClick: MenuProps['onClick'] = (e) => {
-    console.log('click ', e);
-    setCurrent(e.key);
+
+    if (e.key.startsWith("settings")) {
+      const [key, value] = e.key.split(":")
+      dispatch(saveSettings({ key, value }))
+    } else
+      setCurrent(e.key);
+
   };
 
   return (<ConfigProvider
     theme={{
-      algorithm: theme === 'dark' ? darkAlgorithm : defaultAlgorithm,
+      algorithm: [
+        themeSetting.isDark ? darkAlgorithm : defaultAlgorithm
+      ],
+      token: {
+        colorPrimary: themeSetting.colorPrimary,
+        borderRadius: themeSetting.borderRadius,
+        colorTextBase: themeSetting.colorTextBase,
+        fontFamily: "Consolas, 'Courier New', monospace",
+      }
     }}>
 
     <Layout>
@@ -63,12 +89,27 @@ const App: React.FC = () => {
           {
             label: "Signals",
             key: 'signals',
-            icon: <MailOutlined />,
+            icon: <AlertOutlined />,
+          },
+          {
+            label: t(settings.lang),
+            key: 'lang',
+            icon: <GlobalOutlined />,
+            children: [
+              {
+                label: 'English',
+                key: 'settings.lang:en',
+              },
+              {
+                label: 'Việt Nam',
+                key: 'settings.lang:vi',
+              },
+            ]
           },
           {
             label: (
               <Switch
-                checked={theme === 'dark'}
+                checked={themeSetting.isDark}
                 onChange={changeTheme}
                 checkedChildren="Dark"
                 unCheckedChildren="Light"
@@ -85,14 +126,16 @@ const App: React.FC = () => {
       </Content>
 
 
-
-
-      <Footer style={{ textAlign: 'center' }}>Coin X ©2023 |
-        <a className="menu__link" target="_blank" href="https://coinx.trade/about">@coinx99</a> |
-        <a className="menu__link" target="_blank" href="https://coinx.trade">coinx.trade</a>
-        | All Rights Reserved</Footer>
+      <Footer style={{ textAlign: 'center' }}>Coin X ©2023 &nbsp;|&nbsp;
+        <a className="menu__link" target="_blank" href="https://coinx.trade/about">@coinx99</a> &nbsp;|&nbsp;
+        <a className="menu__link" target="_blank" href="https://coinx.trade">coinx.trade</a> &nbsp;|&nbsp;
+        All Rights Reserved</Footer>
     </Layout>
   </ConfigProvider>);
 };
 
 export default App;
+
+function dispatch(arg0: { payload: undefined; type: "theme/toggleDark"; }) {
+  throw new Error('Function not implemented.');
+}

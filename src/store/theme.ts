@@ -1,19 +1,24 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
+
 interface InitialState {
   isDark: boolean,
   isDarkMenu: boolean,
   colorPrimary: string,
   borderRadius: number,
-  isMobile: boolean
+  isMobile: boolean,
+  [name: string]: any,
 }
+
 const initialState: InitialState = {
   colorPrimary: "#1677FF",
-  isDark: false,
+  colorTextBase: "#fff",
+  isDark: true,
   isDarkMenu: true,
   borderRadius: 0,
   isMobile: false
 };
+
 const themeSlice = createSlice({
   name: "theme",
   initialState,
