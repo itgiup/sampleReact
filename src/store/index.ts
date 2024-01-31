@@ -13,6 +13,9 @@ import storage from "redux-persist/lib/storage";
 
 import themeSlice from "./theme";
 import settings from "./settings";
+import services from "./services";
+
+const { log } = console;
 
 const persistConfig = {
     key: "root",
@@ -21,7 +24,8 @@ const persistConfig = {
 };
 const rootReducer = combineReducers({
     theme: themeSlice,
-    settings: settings
+    settings: settings,
+    services: services,
 });
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
@@ -29,9 +33,7 @@ export const store = configureStore({
     reducer: persistedReducer,
     middleware: (getDefaultMiddleware) => {
         return getDefaultMiddleware({
-            serializableCheck: {
-                ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-            },
+            serializableCheck: false,
         })
     },
 })

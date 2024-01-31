@@ -1,15 +1,14 @@
 import { EventEmitter } from "events";
 import { createSlice, createAsyncThunk, } from "@reduxjs/toolkit";
-import type { PayloadAction } from "@reduxjs/toolkit";
-import axios from "axios";
-import { GetThunkAPI } from "@reduxjs/toolkit/dist/createAsyncThunk";
-import store, { AsyncThunkConfig } from "./index";
-import { useDispatch } from "react-redux";
+import localforage from "localforage";
 
-const { log, error, warn } = console
+const { log, error } = console
 
-interface InitialState {
+export type SettingsInitialType = {
+    lang: string,
+    timezone: TIMEZONESType,
     [name: string]: any,
+
 }
 
 
@@ -19,7 +18,7 @@ export const importSetting = createAsyncThunk(
         if (_settings && typeof _settings === 'object') {
             let Settings = await thunkAPI.getState;
             let after = { ...Settings, ..._settings }
-            localStorage.setItem("settings", JSON.stringify(after))
+            localforage.setItem("settings", after)
             return { before: Settings, after }
         }
     }
@@ -31,17 +30,13 @@ export const importSetting = createAsyncThunk(
 export var settingsEvent = new EventEmitter();
 
 /**
- * loadSettingss: Tự động lấy settings từ localStorage, nếu không có thì lấy từ settings.json, nếu không có thì báo lỗi
+ * loadSettingss: Tự động lấy settings từ localforage, nếu không có thì lấy từ settings.json, nếu không có thì báo lỗi
  */
-// Tự động lấy settings từ localStorage, nếu không có thì lấy từ settings.json, nếu không có thì báo lỗi
+// Tự động lấy settings từ localforage, nếu không có thì lấy từ settings.json, nếu không có thì báo lỗi
 async function _loadSettings() {
-    let settings = localStorage.getItem("settings")
-    if (!settings) {
-        let r: { [name: string | number]: any } = await axios.get("/settings.json")
-        return JSON.parse(r.data)
-    }
+    let settings = await localforage.getItem("settings")
     if (settings)
-        return JSON.parse(settings)
+        return settings
     else throw new Error("SETTING_NOT_FOUND")
 }
 export const loadSettings = createAsyncThunk(
@@ -50,40 +45,45 @@ export const loadSettings = createAsyncThunk(
 )
 
 /**
- * change sẽ lưu cài đặt vào localStorage
+ * change sẽ lưu cài đặt vào localforage
  */
 export const change = createAsyncThunk(
     "change",
     async (args: any, thunkAPI): Promise<any> => {
-        let { key, value } = args
         let { settings } = await thunkAPI.getState() as any
         let _settings = JSON.parse(JSON.stringify(settings));
 
-        let keys = key.split('.');
-        let lastkey = keys[keys.length - 1].trim();
-        let obj = keys.slice(0, keys.length - 1).reduce((acc: any, key: string | number) => acc[key], _settings)
-        console.warn(obj, lastkey)
-        obj[lastkey] = value;
+        Object.entries(args).forEach(([key, value]) => {
+            let keys = key.split('.');
+            let lastkey = keys[keys.length - 1].trim();
+            let obj = keys.slice(0, keys.length - 1).reduce((acc: any, key: string | number) => acc[key], _settings)
+            console.warn(obj, lastkey)
+            obj[lastkey] = value;
+        })
 
-        localStorage.setItem("settings", JSON.stringify(_settings))
-        return { key, value, before: settings, after: _settings };
+        await localforage.setItem("settings", _settings)
+        return { before: settings, after: _settings };
     }
 )
 
-const initialState: InitialState = {
-    lang: "en",
+
+const initialState: SettingsInitialType = {
+    lang: "vi",
     telegram: {
         chat1: "-chat1",
         chat2: "-chat2",
-    }
+    },
+
+    timezone: { offset: 7, name: "UTC+07:00", deviation: 25200000 },
+
 };
 
 const settingsSlice = createSlice({
     name: "settings",
     initialState,
     reducers: {
-        reset: (state) => {
-            state = initialState;
+        reset: () => {
+            localforage.removeItem("settings")
         },
     },
 
@@ -115,8 +115,6 @@ const settingsSlice = createSlice({
         })
 
         builder.addCase(change.fulfilled, (state: any, action: any) => {
-            log(action.payload)
-
             for (const key in action.payload.after) {
                 state[key] = action.payload.after[key];
             }

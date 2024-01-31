@@ -2,7 +2,7 @@
 import { notification } from 'antd';
 import BigNumber from 'bignumber.js';
 import ethers, { formatEther } from 'ethers';
-import React, { createElement } from 'react';
+import { createElement } from 'react';
 
 declare global {
     interface Window {
@@ -49,6 +49,16 @@ function copyText(text: string, callback: () => {}) {
         notification.error({ message: err.message });
     }
 }
+
+/**
+ * tính số % thay đổi của a so với b
+ * @param {Number} a 
+ * @param {Number} b 
+ * @returns {Number}
+ */
+export function percentChange(a: number, b: number): number {
+    return ((b - a) / a) * 100
+};
 
 function randomString(e: number) {
     e = e || 32;
@@ -138,8 +148,6 @@ function isUrl(url: string) {
  * @param {int} decimals số thập phân sau dấu chấm
  * @returns {float}
  */
-
-let x: String = "12312323"
 function getRandomFloat(min: String | Number, max: Number | String, decimals = 0) {
     if (typeof min === "string") min = Number(min)
     if (typeof max === "string") max = Number(max)
@@ -159,6 +167,52 @@ function getRandomFloat(min: String | Number, max: Number | String, decimals = 0
     }
     const str = ""// (Math.random() * (max - min) + min).toFixed(decimals);
     return parseFloat(str);
+}
+
+/**
+ * nhập vào 1 số hoặc chuỗi, 
+ * trả về độ dài số thập phân
+ * và số thập phân tối thiểu.
+ * Ví dụ 89.46230000
+ *  trả về {
+ *      precision: 4,
+ *      minMove: 0.0001
+ *  }
+ */
+export function getPrecision(n: number | string) {
+    // let str = n.toString()
+    // let parts = str.split(".")
+    // if (parts[1]) {
+    //     let minMove = Math.pow(10, -(Number("0." + parts[1]).toString()).length)
+    //     log(n, minMove, parts[1], Number(parts[1]).toString(),)
+    //     return {
+    //         precision: parts[1].length,
+    //         minMove: minMove
+    //     }
+    // }
+
+    let integerPart = parseInt(n);
+    let decimalPart = Number(n) - integerPart;
+    let minMove = "0.", precision = 0;
+
+    if (decimalPart) {
+        precision = decimalPart.toString().length - 2
+        if (precision > 6) {
+            precision = 6;
+            minMove += "000001"
+
+        } else {
+            for (let i = 1; i < precision; i++) {
+                minMove += "0"
+            }
+            minMove += "1"
+        }
+    }
+
+    return {
+        precision,
+        minMove: Number(minMove)
+    }
 }
 
 /**
@@ -182,7 +236,12 @@ function TenPower(decimals = 18) {
     return new BigNumber(10).pow(decimals)
 }
 
-function formatNumberWithCommas(n: number) {
+/**
+ * thêm dấu ngăn cách phần nghìn giữa các số
+ * formatNumberWithCommas(52564560.111111) => '52,564,560'
+ * formatNumberWithCommas(1.111111) => '1'
+ */
+function formatNumberWithCommas(n: number):string {
     const reversedNumber = parseInt(Math.abs(n).toString()).toString().split('').reverse().join('');
     let formattedNumber = '';
     for (let i = 0; i < reversedNumber.length; i++) {
@@ -255,8 +314,54 @@ function BNFormat_(_number: bigint | number, decimals = 6) {
     let bn = new BigNumber(_number.toString())
     return bn.toFormat()
 }
-window.formatEther = formatEther
-window.BNFormat = BNFormat
+
+/**
+ * tìm trong khoảng thời gian, những mốc h8 bắt đầu
+ * @param {int} start 
+ * @param {int} end 
+ * @return {int[]} list timestamp 0h 8h 16h
+ */
+export function getH8Times(start = Date.now() - 24 * 60 * 60 * 1000, end = Date.now()) {
+    let start_date = new Date(start)
+    let hour = start_date.getUTCHours();
+
+    if (hour > 0 && hour <= 8)
+        hour = 8;
+    if (hour > 8 && hour <= 16)
+        hour = 16;
+    if (hour > 16 && hour <= 24)
+        hour = 0;
+
+    start_date.setUTCHours(hour);
+
+    start_date.setUTCMinutes(0);
+    start_date.setUTCSeconds(0);
+    start_date.setUTCMilliseconds(0);
+
+    let list = []
+    let current = start_date.getTime();
+    while (current <= end) {
+        list.push(current);
+        current += 8 * 60 * 60 * 1000;
+    }
+    list.push(current);
+    return list;
+}
+
+
+export function toggleFullscreen(elem: HTMLElement) {
+    if (!document.fullscreenElement) {
+        return elem.requestFullscreen().catch((err) => {
+            alert(
+                `Error attempting to enable fullscreen mode: ${err.message} (${err.name})`,
+            );
+        });
+    } else {
+        return document.exitFullscreen();
+    }
+}
+
+
 export {
     getShortAddress,
     tab, enter,

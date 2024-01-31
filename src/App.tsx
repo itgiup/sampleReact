@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useAppDispatch, useAppSelector } from "./store/hooks";
+import { useStoreDispatch, useStore } from "store/hooks";
 import type { MenuProps, } from 'antd';
-import { AlertOutlined, GlobalOutlined, } from '@ant-design/icons';
-import { ConfigProvider, Layout, Menu, Switch, theme } from 'antd';
-import { createBrowserRouter, RouterProvider, Link, } from "react-router-dom";
-import i18n from './i18n';
+import { Col, ConfigProvider, FloatButton, Layout, Menu, message, Row, Switch, theme } from 'antd';
+import { AlertOutlined, GlobalOutlined, ClearOutlined, DeleteOutlined, ReloadOutlined, } from '@ant-design/icons';
+import { Outlet, useLocation, } from "react-router-dom";
+import i18n from 'services/i18n';
 
 import dayjs from 'dayjs'
 import advancedFormat from 'dayjs/plugin/advancedFormat';
@@ -14,76 +14,84 @@ import weekday from 'dayjs/plugin/weekday'
 import weekOfYear from 'dayjs/plugin/weekOfYear'
 import weekYear from 'dayjs/plugin/weekYear'
 
-import { toggleDark } from './store/theme';
+import { change, loadSettings, reset, } from 'store/settings';
+import { toggleDark } from 'store/theme';
 
-import "./App.scss";
-import { change, loadSettings, } from './store/settings';
-import { useTranslation } from 'react-i18next';
+import "App.scss";
+
 dayjs.extend(customParseFormat)
 dayjs.extend(advancedFormat)
 dayjs.extend(weekday)
 dayjs.extend(localeData)
 dayjs.extend(weekOfYear)
 dayjs.extend(weekYear)
-const { log, error, warn } = console
+const { log, error, } = console
 
-const { Header, Content, Footer, Sider } = Layout;
+const { Header, Content, Footer, } = Layout;
 const { defaultAlgorithm, darkAlgorithm } = theme;
-
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <div>Hello world!iIlL</div>,
-  },
-  {
-    path: "/login",
-    element: <div>login</div>,
-  },
-]);
-
-
-
-
-
-
-
 
 
 const App: React.FC = () => {
-  const dispatch = useAppDispatch();
+  const dispatch = useStoreDispatch();
   const { t } = i18n
-  const themeSetting = useAppSelector((state) => state.theme);
-  const settings = useAppSelector((state) => state.settings);
+  const themeSetting = useStore((state) => state.theme);
+  const settings = useStore((state) => state.settings);
+  const services = useStore((state) => state.services);
+
+
   const [current, setCurrent] = useState('signals');
   const mounted = useRef(false);
 
+  const location = useLocation();
   useEffect(() => {
     // do componentDidMount logic
     if (!mounted.current) {
-      dispatch(loadSettings()).then(({ payload }) => {
-        if (payload && payload.lang)
-          i18n.changeLanguage(payload.lang)
+      dispatch(loadSettings()).then((s: any) => {
+        if (s && s?.lang) {
+          i18n.changeLanguage(s?.lang)
+        }
       })
+      setCurrent(location.pathname.slice(1))
+
       mounted.current = true;
-
-    } else {
-      // do componentDidUpdate logic
-
     }
-  });
+  }, []);
 
-  const changeTheme = (value: boolean) => {
+  useEffect(() => {
+    i18n.changeLanguage(settings?.lang)
+  }, [settings?.lang])
+
+  const changeTheme = () => {
     dispatch(toggleDark());
   };
 
-  const onClick: MenuProps['onClick'] = (e) => {
+  const onClickMenu: MenuProps['onClick'] = (e) => {
     if (e.key.startsWith("settings")) {
-      const [key, value] = e.key.split(":")
-      dispatch(change({ key: key.replace("settings.", ""), value }))
-      // log(settings)
-    } else
-      setCurrent(e.key);
+      let [key, value] = e.key.split(":")
+      key = key.replace("settings.", "")
+      dispatch(change({ [key]: value }))
 
+    } else if (e.key === "clean") {
+      services?.altcoinSeason?.cleanData().then((r) => {
+        message.success(t("Clean app success"))
+        document.location.reload()
+      });
+
+    } else if (e.key === "reset") {
+      dispatch(reset())
+      services?.altcoinSeason?.reset().then((r) => {
+        message.success(t("Reset app success"))
+        document.location.reload()
+      });
+    }
+
+    else if (e.key === "theme") { }
+    else if (e.key === "reload") { document.location.reload() }
+
+    else {
+      setCurrent(e.key);
+      document.location.href = "/" + e.key
+    }
   };
 
   return (<ConfigProvider
@@ -102,12 +110,32 @@ const App: React.FC = () => {
     <Layout>
 
       <Header>
-        <div className="logo" />
-        <Menu onClick={onClick} selectedKeys={[current]} mode="horizontal" items={[
+        <div className="logo"></div>
+        <Menu onClick={onClickMenu} selectedKeys={[current]} mode="horizontal" items={[
           {
-            label: "Signals",
-            key: 'signals',
+            label: <a href='/' target='_target'></a>,
+            key: '',
+            icon: <img src='/favicon.ico' style={{ width: "38px" }} />,// <HomeOutlined />,
+          },
+          {
+            label: <a href='/content' target='_target'>content</a>,
+            key: 'content',
             icon: <AlertOutlined />,
+          },
+          {
+            label: "",
+            key: 'reload',
+            icon: <ReloadOutlined />,
+          },
+          {
+            label: t("Clean data"),
+            icon: <ClearOutlined />,
+            key: 'clean',
+          },
+          {
+            label: t("Reset app"),
+            icon: <DeleteOutlined />,
+            key: 'reset',
           },
           {
             label: t(settings.lang),
@@ -133,27 +161,28 @@ const App: React.FC = () => {
                 unCheckedChildren="🌙"
               />
             ),
-            key: 'alipay',
+            key: 'theme',
           },
         ]} />
       </Header>
 
 
       <Content style={{ padding: '10px', color: themeSetting.colorTextBase }}>
-        <RouterProvider router={router} />
+        <Outlet />
       </Content>
 
-
-      <Footer style={{ textAlign: 'center' }}>Coin X ©2023 |&nbsp;
-        <a className="menu__link" target="_blank" href="https://coinx.trade/about">@coinx99</a> |&nbsp;
-        <a className="menu__link" target="_blank" href="https://coinx.trade">coinx.trade</a> |&nbsp;
-        All Rights Reserved</Footer>
+      <FloatButton.BackTop />
+      <Footer style={{ textAlign: 'center' }}>
+        <Row justify="center" className='footer-row'>
+          <Col>Coin X ©2023 </Col>
+          <Col>
+            <a className="menu__link" target="_blank" href="https://coinx.trade/about">@coinx99</a> |&nbsp;
+            <a className="menu__link" target="_blank" href="https://coinx.trade">coinx.trade</a> </Col>
+          <Col>All Rights Reserved</Col>
+        </Row>
+      </Footer>
     </Layout>
   </ConfigProvider>);
 };
 
 export default App;
-
-function dispatch(arg0: { payload: undefined; type: "theme/toggleDark"; }) {
-  throw new Error('Function not implemented.');
-}

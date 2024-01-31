@@ -5,7 +5,6 @@ interface InitialState {
   isDark: boolean,
   isDarkMenu: boolean,
   colorPrimary: string,
-  borderRadius: number,
   isMobile: boolean,
   [name: string]: any,
 }
@@ -15,7 +14,7 @@ const initialState: InitialState = {
   colorTextBase: "#fff",
   isDark: true,
   isDarkMenu: true,
-  borderRadius: 0,
+  borderRadius: 5,
   isMobile: false
 };
 
